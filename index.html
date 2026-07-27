@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌸 宝子的经期健康小助手</title>
+    <style>
+        :root {
+            --primary-color: #ff758c;
+            --bg-color: #fceef5;
+            --card-bg: #ffffff;
+            --text-main: #4a4a4a;
+            --accent-soft: #ff8ab3;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background: linear-gradient(135deg, #fceef5 0%, #e3eeff 100%); min-height: 100vh; padding: 20px; color: var(--text-main); }
+        .container { max-width: 450px; margin: 0 auto; }
+        
+        header { text-align: center; margin-bottom: 20px; }
+        header h1 { color: #d81b60; font-size: 1.5rem; margin-bottom: 5px; }
+        header p { font-size: 0.85rem; color: #888; }
+
+        .card { background: var(--card-bg); border-radius: 20px; padding: 20px; box-shadow: 0 10px 25px rgba(255, 117, 140, 0.15); margin-bottom: 20px; }
+        
+        /* 倒计时主卡片 */
+        .status-card { text-align: center; background: linear-gradient(135deg, #ff758c 0%, #ff7eb3 100%); color: white; }
+        .status-card .days { font-size: 3rem; font-weight: bold; margin: 10px 0; }
+        .status-card .sub-text { font-size: 0.9rem; opacity: 0.9; }
+
+        /* 表单样式 */
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 5px; color: #666; }
+        input { width: 100%; padding: 12px; border: 1px solid #ffd1dc; border-radius: 12px; font-size: 1rem; outline: none; background: #fff5f7; }
+        input:focus { border-color: var(--primary-color); }
+
+        button { width: 100%; padding: 12px; border: none; border-radius: 12px; background: var(--primary-color); color: white; font-size: 1rem; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        button:active { transform: scale(0.98); }
+
+        /* 预测节点展示 */
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .info-item { background: #fff0f5; padding: 12px; border-radius: 12px; text-align: center; }
+        .info-item .title { font-size: 0.75rem; color: #888; margin-bottom: 4px; }
+        .info-item .date { font-weight: bold; color: #d81b60; font-size: 0.95rem; }
+
+        /* 关怀贴士 */
+        .care-list { list-style: none; }
+        .care-list li { font-size: 0.85rem; margin-bottom: 8px; display: flex; align-items: center; }
+        .care-list li::before { content: "💗"; margin-right: 8px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>🌸 经期护理预测站</h1>
+        <p>用心记录，给宝子最贴心的关怀</p>
+    </header>
+
+    <!-- 核心状态卡片 -->
+    <div class="card status-card">
+        <div class="sub-text" id="statusTitle">距离下一次月经</div>
+        <div class="days" id="countdown">--</div>
+        <div class="sub-text" id="statusDesc">请输入上次经期数据进行计算</div>
+    </div>
+
+    <!-- 数据输入卡片 -->
+    <div class="card">
+        <div class="form-group">
+            <label>上次月经第一天：</label>
+            <input type="date" id="lastDate">
+        </div>
+        <div class="form-group">
+            <label>平均月经周期（天）：</label>
+            <input type="number" id="cycleDays" value="28">
+        </div>
+        <button onclick="calculateAndSave()">保存并更新预测</button>
+    </div>
+
+    <!-- 关键日期计算结果 -->
+    <div class="card">
+        <h3 style="font-size: 1rem; margin-bottom: 10px;">📅 关键日期预测</h3>
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="title">预计下次经期</div>
+                <div class="date" id="nextDate">--</div>
+            </div>
+            <div class="info-item">
+                <div class="title">预计排卵日</div>
+                <div class="date" id="ovulationDate">--</div>
+            </div>
+            <div class="info-item" style="grid-column: span 2;">
+                <div class="title">排卵期（易孕区间）</div>
+                <div class="date" id="ovulationRange">--</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 贴心关怀建议 -->
+    <div class="card">
+        <h3 style="font-size: 1rem; margin-bottom: 10px;">💡 男朋友备忘清单</h3>
+        <ul class="care-list" id="careTips">
+            <li>输入数据后将获得阶段专属关怀建议</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    // 页面加载时自动读取本地保存的数据
+    window.onload = function() {
+        const savedDate = localStorage.getItem('lastPeriodDate');
+        const savedCycle = localStorage.getItem('cycleDays');
+        
+        if (savedDate) document.getElementById('lastDate').value = savedDate;
+        if (savedCycle) document.getElementById('cycleDays').value = savedCycle;
+        
+        if (savedDate && savedCycle) {
+            updateDashboard(new Date(savedDate), parseInt(savedCycle));
+        }
+    }
+
+    function calculateAndSave() {
+        const dateInput = document.getElementById('lastDate').value;
+        const cycleInput = parseInt(document.getElementById('cycleDays').value);
+
+        if (!dateInput || !cycleInput) {
+            alert("请完整填写日期和周期天数哦！");
+            return;
+        }
+
+        // 保存到浏览器本地存储
+        localStorage.setItem('lastPeriodDate', dateInput);
+        localStorage.setItem('cycleDays', cycleInput);
+
+        updateDashboard(new Date(dateInput), cycleInput);
+    }
+
+    function formatDate(date) {
+        const m = (date.getMonth() + 1).toString().padStart(2, '0');
+        const d = date.getDate().toString().padStart(2, '0');
+        return `${m}月${d}日`;
+    }
+
+    function updateDashboard(lastDate, cycleDays) {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        
+        // 1. 计算下次经期
+        const nextPeriod = new Date(lastDate);
+        nextPeriod.setDate(nextPeriod.getDate() + cycleDays);
+        
+        // 2. 计算排卵日 (下次经期前14天)
+        const ovulation = new Date(nextPeriod);
+        ovulation.setDate(ovulation.getDate() - 14);
+
+        // 3. 计算排卵期 (排卵日前5天 ~ 后4天)
+        const ovulStart = new Date(ovulation);
+        ovulStart.setDate(ovulStart.getDate() - 5);
+        const ovulEnd = new Date(ovulation);
+        ovulEnd.setDate(ovulEnd.getDate() + 4);
+
+        // 4. 计算倒计时天数
+        const diffTime = nextPeriod - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        // 更新日期显示
+        document.getElementById('nextDate').innerText = formatDate(nextPeriod);
+        document.getElementById('ovulationDate').innerText = formatDate(ovulation);
+        document.getElementById('ovulationRange').innerText = `${formatDate(ovulStart)} ~ ${formatDate(ovulEnd)}`;
+
+        // 更新主卡片与贴士
+        const statusTitle = document.getElementById('statusTitle');
+        const countdown = document.getElementById('countdown');
+        const statusDesc = document.getElementById('statusDesc');
+        const careTips = document.getElementById('careTips');
+
+        if (diffDays === 0) {
+            statusTitle.innerText = "🌸 预警状态";
+            countdown.innerText = "今日";
+            statusDesc.innerText = "预计经期今天到来，随时做好准备！";
+            careTips.innerHTML = `
+                <li>准备好卫生巾/安心裤放在她随身包里</li>
+                <li>接好温热水，避免让她喝冷饮或吃生冷食物</li>
+                <li>主动承担家务，让她多休息</li>
+            `;
+        } else if (diffDays > 0 && diffDays <= 3) {
+            statusTitle.innerText = "⚠️ 经前倒计时";
+            countdown.innerText = `${diffDays} 天`;
+            statusDesc.innerText = "经期即将到来，注意观察她的情绪和身体状态";
+            careTips.innerHTML = `
+                <li>注意情绪关怀，避免因小事发生争执</li>
+                <li>准备好红糖水、暖宝宝或热水袋</li>
+                <li>提醒她早点休息，避免剧烈运动</li>
+            `;
+        } else if (diffDays < 0 && diffDays >= -5) {
+            statusTitle.innerText = "🩸 经期进行中";
+            countdown.innerText = `第 ${Math.abs(diffDays) + 1} 天`;
+            statusDesc.innerText = "身体处于敏感期，多给予温暖与陪伴";
+            careTips.innerHTML = `
+                <li>煮点红糖姜茶或红豆汤</li>
+                <li>主动帮她揉揉肚子或腰部</li>
+                <li>顺着她的情绪，多给拥抱和关心</li>
+            `;
+        } else {
+            statusTitle.innerText = "距离下一次月经";
+            countdown.innerText = `${diffDays} 天`;
+            statusDesc.innerText = "身体状态良好，保持规律作息";
+            careTips.innerHTML = `
+                <li>保持日常温馨互动，记录健康状态</li>
+                <li>排卵期附近适合安排出游或约会</li>
+                <li>适当提醒她多喝水、少熬夜</li>
+            `;
+        }
+    }
+</script>
+
+</body>
+</html>
