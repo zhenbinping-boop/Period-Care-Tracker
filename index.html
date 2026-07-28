@@ -24,18 +24,15 @@
 
         .card { background: var(--card-bg); border-radius: 18px; padding: 20px; box-shadow: 0 8px 20px rgba(216, 27, 96, 0.08); margin-bottom: 16px; }
         
-        /* 倒计时主卡片 */
         .status-card { text-align: center; background: linear-gradient(135deg, #ff6584 0%, #ff8ab3 100%); color: white; }
         .status-card .status-title { font-size: 0.9rem; opacity: 0.9; }
         .status-card .window-range { font-size: 1.8rem; font-weight: bold; margin: 10px 0; letter-spacing: 0.5px; }
         .status-card .sub-text { font-size: 0.85rem; background: rgba(255, 255, 255, 0.2); padding: 6px 12px; border-radius: 20px; display: inline-block; }
 
-        /* 表单样式 */
         .form-group { margin-bottom: 14px; }
         label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 6px; color: var(--text-main); }
         input[type="date"], input[type="number"] { width: 100%; padding: 10px 12px; border: 1px solid #ffd1dc; border-radius: 10px; font-size: 0.95rem; outline: none; background: #fff5f7; }
         
-        /* 动态因子多选框 */
         .factor-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
         .checkbox-label { display: flex; align-items: center; font-size: 0.82rem; font-weight: normal; background: #fdf0f4; padding: 8px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; }
         .checkbox-label input { margin-right: 6px; }
@@ -43,13 +40,11 @@
         button { width: 100%; padding: 12px; border: none; border-radius: 10px; background: var(--primary-color); color: white; font-size: 1rem; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 5px; }
         button:active { transform: scale(0.98); }
 
-        /* 节点网格 */
         .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
         .info-item { background: var(--accent-soft); padding: 10px; border-radius: 10px; text-align: center; }
         .info-item .title { font-size: 0.75rem; color: var(--text-sub); margin-bottom: 2px; }
         .info-item .date { font-weight: bold; color: #d81b60; font-size: 0.9rem; }
 
-        /* 关怀指南 */
         .care-section h3 { font-size: 0.95rem; margin-bottom: 10px; color: #d81b60; display: flex; align-items: center; gap: 5px; }
         .care-list { list-style: none; }
         .care-list li { font-size: 0.85rem; margin-bottom: 10px; line-height: 1.4; position: relative; padding-left: 20px; }
@@ -65,14 +60,12 @@
         <p>基于循证医学的动态经期关怀站</p>
     </header>
 
-    <!-- 1. 核心预测区间卡片 -->
     <div class="card status-card">
         <div class="status-title" id="statusTitle">预计下次经期到达窗口</div>
         <div class="window-range" id="windowRange">--月--日 ~ --月--日</div>
         <div class="sub-text" id="statusDesc">请输入上次经期数据启动推算</div>
     </div>
 
-    <!-- 2. 数据与动态影响因子打卡 -->
     <div class="card">
         <div class="form-group">
             <label>上次月经第一天：</label>
@@ -98,7 +91,6 @@
         <button onclick="calculateAndSave()">更新动态预测并同步云端</button>
     </div>
 
-    <!-- 3. 生理周期节点网格 -->
     <div class="card">
         <h3 style="font-size: 0.95rem; margin-bottom: 10px;">📅 关键生理节点</h3>
         <div class="info-grid">
@@ -113,7 +105,6 @@
         </div>
     </div>
 
-    <!-- 4. 重点疼痛与睡眠关怀清单 -->
     <div class="card care-section">
         <h3>🩸 经期剧痛与睡眠关怀指南</h3>
         <ul class="care-list" id="careTips">
@@ -123,11 +114,25 @@
 </div>
 
 <script>
-
-const JSONBIN_KEY = "$2a$10$/UCL110yK1FvvLSFSBP1aOaLdu65dAsF6nlvQ3NC7fP72pgEaQ.Mm"; 
-const JSONBIN_BIN_ID = "6a682be4f5f4af5e29cb2c88";
+    // ⚠️ 请填写你自己的真实 JSONBin 密钥
+    const JSONBIN_KEY = "$2a$10$/UCL110yK1FvvLSFSBP1aOaLdu65dAsF6nlvQ3NC7fP72pgEaQ.Mm"; 
+    const JSONBIN_BIN_ID = "6a682be4f5f4af5e29cb2c88";
 
     window.onload = function() {
+        // 1. 自动解析微信快捷打卡参数
+        const urlParams = new URLSearchParams(window.location.search);
+        const action = urlParams.get('action');
+
+        if (action) {
+            handleQuickAction(action);
+            return;
+        }
+
+        // 2. 正常读取初始化
+        loadSavedData();
+    }
+
+    function loadSavedData() {
         const savedDate = localStorage.getItem('lastPeriodDate');
         const savedCycle = localStorage.getItem('cycleDays');
         const savedLength = localStorage.getItem('periodLength') || 5;
@@ -149,6 +154,51 @@ const JSONBIN_BIN_ID = "6a682be4f5f4af5e29cb2c88";
         }
     }
 
+    function handleQuickAction(action) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        let savedCycle = parseInt(localStorage.getItem('cycleDays')) || 28;
+        let savedLength = parseInt(localStorage.getItem('periodLength')) || 5;
+
+        let updateData = {
+            lastDate: localStorage.getItem('lastPeriodDate') || todayStr,
+            cycleDays: savedCycle,
+            periodLength: savedLength,
+            factorStress: localStorage.getItem('factorStress') === 'true',
+            factorSleep: localStorage.getItem('factorSleep') === 'true'
+        };
+
+        if (action === 'period_today') {
+            updateData.lastDate = todayStr;
+            alert("🩸 打卡成功！已将今天设置为最新的经期首日！");
+        } else if (action === 'period_end') {
+            const lastDateStr = localStorage.getItem('lastPeriodDate');
+            if (lastDateStr) {
+                const lastDate = new Date(lastDateStr);
+                const today = new Date();
+                const actualLength = Math.max(1, Math.floor((today - lastDate) / (86400000)) + 1);
+                updateData.periodLength = actualLength;
+                alert(`🎉 打卡成功！已记录本次经期持续 ${actualLength} 天，辛苦啦！`);
+            }
+        } else if (action === 'toggle_stress') {
+            updateData.factorStress = true;
+            alert("⚡ 打卡成功！已记录高压/加班状态，预测已做弹性微调！");
+        } else if (action === 'toggle_sleep') {
+            updateData.factorSleep = true;
+            alert("🌙 打卡成功！已记录熬夜状态，请今晚早点休息哦！");
+        } else if (action === 'reset_factors') {
+            updateData.factorStress = false;
+            updateData.factorSleep = false;
+            alert("🔄 已清空今日影响因子（恢复标准预测）。");
+        }
+
+        localStorage.setItem('lastPeriodDate', updateData.lastDate);
+        localStorage.setItem('periodLength', updateData.periodLength);
+        localStorage.setItem('factorStress', updateData.factorStress);
+        localStorage.setItem('factorSleep', updateData.factorSleep);
+
+        syncToJSONBin(updateData);
+    }
+
     function calculateAndSave() {
         const dateInput = document.getElementById('lastDate').value;
         const cycleInput = parseInt(document.getElementById('cycleDays').value);
@@ -159,17 +209,7 @@ const JSONBIN_BIN_ID = "6a682be4f5f4af5e29cb2c88";
             return;
         }
 
-        // 1. 本地缓存保存
-        localStorage.setItem('lastPeriodDate', dateInput);
-        localStorage.setItem('cycleDays', cycleInput);
-        localStorage.setItem('periodLength', lengthInput);
-        localStorage.setItem('factorStress', document.getElementById('factorStress').checked);
-        localStorage.setItem('factorSleep', document.getElementById('factorSleep').checked);
-        localStorage.setItem('factorSick', document.getElementById('factorSick').checked);
-        localStorage.setItem('factorDiet', document.getElementById('factorDiet').checked);
-
-        // 2. 同步上传到 JSONBin 云端数据库（供 Python 脚本读取）
-        const dataToSync = {
+        const dataToSave = {
             lastDate: dateInput,
             cycleDays: cycleInput,
             periodLength: lengthInput,
@@ -177,29 +217,42 @@ const JSONBIN_BIN_ID = "6a682be4f5f4af5e29cb2c88";
             factorSleep: document.getElementById('factorSleep').checked
         };
 
-        if (JSONBIN_KEY !== "你的_JSONBIN_MASTER_KEY" && JSONBIN_BIN_ID !== "你的_JSONBIN_BIN_ID") {
-            fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Master-Key': JSONBIN_KEY
-                },
-                body: JSON.stringify(dataToSync)
-            })
-            .then(res => res.json())
-            .then(data => {
-                alert("✅ 动态数据已成功更新并同步至云端！");
-                updateDashboard();
-            })
-            .catch(err => {
-                console.error("云端同步失败:", err);
-                alert("⚠️ 本地更新成功，但云端数据库同步失败，请检查 Key 是否填写正确。");
-                updateDashboard();
-            });
-        } else {
-            alert("✅ 本地更新成功！（提示：配置 JSONBin Key 后可激活云端微信推送同步）");
+        localStorage.setItem('lastPeriodDate', dateInput);
+        localStorage.setItem('cycleDays', cycleInput);
+        localStorage.setItem('periodLength', lengthInput);
+        localStorage.setItem('factorStress', dataToSave.factorStress);
+        localStorage.setItem('factorSleep', dataToSave.factorSleep);
+        localStorage.setItem('factorSick', document.getElementById('factorSick').checked);
+        localStorage.setItem('factorDiet', document.getElementById('factorDiet').checked);
+
+        syncToJSONBin(dataToSave);
+    }
+
+    function syncToJSONBin(data) {
+        if (JSONBIN_KEY.includes("你的") || JSONBIN_BIN_ID.includes("你的")) {
+            alert("✅ 本地更新成功！（提示：配置 JSONBin 密钥后可同步云端）");
             updateDashboard();
+            return;
         }
+
+        fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Master-Key': JSONBIN_KEY
+            },
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(() => {
+            alert("✅ 动态数据已成功同步至云端！");
+            window.location.href = window.location.pathname;
+        })
+        .catch(err => {
+            console.error("云端同步失败:", err);
+            alert("⚠️ 本地更新成功，但云端数据库同步失败。");
+            updateDashboard();
+        });
     }
 
     function formatDate(date) {
@@ -217,20 +270,17 @@ const JSONBIN_BIN_ID = "6a682be4f5f4af5e29cb2c88";
         const hasSick = localStorage.getItem('factorSick') === 'true';
         const hasDiet = localStorage.getItem('factorDiet') === 'true';
 
-        // 统一处理日期（去除时分秒干扰）
         const parts = lastDateStr.split('-');
         const lastDate = new Date(parts[0], parts[1] - 1, parts[2]);
         const today = new Date();
         today.setHours(0,0,0,0);
 
-        // 1. 计算动态修正延迟天数 (HPA轴应激/失眠/生病均可拉长周期)
         let delayDays = 0;
         if (hasStress) delayDays += 2;
         if (hasSleep) delayDays += 1;
         if (hasSick) delayDays += 2;
         if (hasDiet) delayDays += 1;
 
-        // 2. 推算下一次经期的预测窗口
         const baseTarget = new Date(lastDate);
         baseTarget.setDate(baseTarget.getDate() + cycleDays + delayDays);
 
@@ -239,11 +289,9 @@ const JSONBIN_BIN_ID = "6a682be4f5f4af5e29cb2c88";
         const winEnd = new Date(baseTarget);
         winEnd.setDate(winEnd.getDate() + (delayDays > 0 ? 3 : 2));
 
-        // 3. 推算经期结束日（上次首日 + 经期天数 - 1）
         const currentPeriodEnd = new Date(lastDate);
         currentPeriodEnd.setDate(currentPeriodEnd.getDate() + periodLength - 1);
 
-        // 4. 计算排卵节点
         const ovulation = new Date(baseTarget);
         ovulation.setDate(ovulation.getDate() - 14);
         const ovulStart = new Date(ovulation);
@@ -251,7 +299,6 @@ const JSONBIN_BIN_ID = "6a682be4f5f4af5e29cb2c88";
         const ovulEnd = new Date(ovulation);
         ovulEnd.setDate(ovulEnd.getDate() + 4);
 
-        // 5. UI 渲染与状态分支判断
         document.getElementById('windowRange').innerText = `${formatDate(winStart)} ~ ${formatDate(winEnd)}`;
         document.getElementById('ovulationDate').innerText = formatDate(ovulation);
         document.getElementById('ovulationRange').innerText = `${formatDate(ovulStart)} ~ ${formatDate(ovulEnd)}`;
@@ -261,40 +308,39 @@ const JSONBIN_BIN_ID = "6a682be4f5f4af5e29cb2c88";
         const statusDesc = document.getElementById('statusDesc');
         const careTips = document.getElementById('careTips');
 
-        let dynamicNote = delayDays > 0 ? ` (考虑打卡影响因子，下次预测窗口已后延 ${delayDays} 天)` : '';
+        let dynamicNote = delayDays > 0 ? ` (考虑影响因子，预测已后延 ${delayDays} 天)` : '';
 
-        // 🐛 【Bug 修复关键判断】先判断是否处于“当前正在进行的经期”内！
         if (today >= lastDate && today <= currentPeriodEnd) {
             const currentDay = Math.floor((today - lastDate) / (1000 * 60 * 60 * 24)) + 1;
             statusTitle.innerText = `🩸 经期进行中（第 ${currentDay} 天）`;
             statusDesc.innerText = `预计经期持续至 ${formatDate(currentPeriodEnd)}，身体处于敏感期，请多休息`;
             careTips.innerHTML = `
-                <li><strong>早期预防给药：</strong> 若出现剧烈阵痛，见红或微痛第一时间服用布洛芬，阻断前列腺素爆发！</li>
-                <li><strong>40~45℃ 物理热疗：</strong> 贴上暖宝宝/热敷带，扩张血管以加速前列腺素代谢，镇痛效果堪比止痛药[cite: 1]。</li>
-                <li><strong>今夜助眠降温：</strong> 卧室空调降至 18~20℃（降低黄体期偏高体温，促进深睡眠）[cite: 1]。</li>
-                <li><strong>穴位舒缓：</strong> 帮她轻柔按压“三阴交”或“关元”穴，激活内源性阿片肽止痛[cite: 1]。</li>
+                <li><strong>早期预防给药：</strong> 若剧烈阵痛，见红或微痛第一时间服用布洛芬阻断前列腺素爆发！</li>
+                <li><strong>40~45℃ 物理热疗：</strong> 贴上暖宝宝/热敷带，扩张血管以加速前列腺素代谢，镇痛效果堪比止痛药。</li>
+                <li><strong>今夜助眠降温：</strong> 卧室空调降至 18~20℃（降低体温促进深睡眠）。</li>
+                <li><strong>穴位舒缓：</strong> 轻柔按压“三阴交”或“关元”穴，激活内源性阿片肽止痛。</li>
             `;
         } else if (today >= winStart && today <= winEnd) {
             statusTitle.innerText = "🌸 当前正处于下次经期预测窗口期";
             statusDesc.innerText = "月经在窗口内任意一天到达均属正常现象" + dynamicNote;
             careTips.innerHTML = `
                 <li><strong>备好卫生用品：</strong> 随时准备好卫生巾/安心裤，避免突发不便。</li>
-                <li><strong>准备止痛药与热敷贴：</strong> 检查布洛芬/暖宝宝库存，随时应对首日缺血痉挛[cite: 1]。</li>
-                <li><strong>今夜助眠降温：</strong> 卧室空调降至 18~20℃，促进深睡眠[cite: 1]。</li>
+                <li><strong>准备止痛药与热敷贴：</strong> 检查布洛芬/暖宝宝库存，随时应对首日缺血痉挛。</li>
+                <li><strong>今夜助眠降温：</strong> 卧室空调降至 18~20℃，促进深睡眠。</li>
             `;
         } else if (daysToWindow > 0 && daysToWindow <= 2) {
             statusTitle.innerText = "⚠️ 距离预测窗口还有 " + daysToWindow + " 天";
             statusDesc.innerText = "进入痛经预备黄金期，提前做好准备" + dynamicNote;
             careTips.innerHTML = `
-                <li><strong>准备止痛药与热敷贴：</strong> 检查布洛芬库存，出现微痛第一时间给药[cite: 1]。</li>
-                <li><strong>避免睡眠剥夺：</strong> 今晚陪她早睡，睡眠不足会降低痛阈并加重痛觉敏化[cite: 1]！</li>
-                <li><strong>饮食调理：</strong> 补充富含 Omega-3 或镁的温饮（松弛子宫平滑肌）[cite: 1]，严禁咖啡因与酒精[cite: 1]。</li>
+                <li><strong>准备止痛药与热敷贴：</strong> 检查布洛芬库存，出现微痛第一时间给药。</li>
+                <li><strong>避免睡眠剥夺：</strong> 今晚陪她早睡，睡眠不足会降低痛阈并加重痛觉敏化！</li>
+                <li><strong>饮食调理：</strong> 补充富含 Omega-3 或镁的温饮，严禁咖啡因与酒精。</li>
             `;
         } else {
             statusTitle.innerText = "距离预测窗口还有 " + daysToWindow + " 天";
             statusDesc.innerText = "身体处于稳定期，保持规律作息" + dynamicNote;
             careTips.innerHTML = `
-                <li><strong>全周期护理：</strong> 规律作息，适当运动，保持情绪愉悦[cite: 1]。</li>
+                <li><strong>全周期护理：</strong> 规律作息，适当运动，保持情绪愉悦。</li>
             `;
         }
     }
