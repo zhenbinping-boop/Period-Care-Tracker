@@ -2,9 +2,9 @@ name: Period Reminder Daily Check
 
 on:
   schedule:
-    # 每天 UTC 时间 00:00 运行（对应北京时间早上 08:00）
+    # 每天北京时间早上 08:00 自动触发运行 (UTC 00:00)
     - cron: '0 0 * * *'
-  workflow_dispatch: # 允许在 Actions 页面手动点击按钮测试
+  workflow_dispatch: # 允许在 GitHub 手动点击测试
 
 jobs:
   run-script:
@@ -26,7 +26,7 @@ jobs:
 
     - name: 运行提醒脚本
       env:
-        SERVERCHAN_SENDKEY: ${{ secrets.SERVERCHAN_SENDKEY }}
+        QYWX_ROBOT_URL: ${{ secrets.QYWX_ROBOT_URL }}
         JSONBIN_KEY: ${{ secrets.JSONBIN_KEY }}
         JSONBIN_BIN_ID: ${{ secrets.JSONBIN_BIN_ID }}
       run: python main.py
