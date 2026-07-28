@@ -35,19 +35,25 @@ def get_remote_data():
     return "2026-07-27", 28, 5, False, False
 
 def send_qywx_notice(content):
-    """发送企业微信二人群 Markdown 消息"""
+    """发送企业微信二人群消息（改为 text 纯文本格式，普通微信 100% 完美支持显示）"""
     if not QYWX_ROBOT_URL:
         print("❌ 未配置 QYWX_ROBOT_URL，请检查 GitHub Secrets 设置。")
         return
 
     data = {
-        "msgtype": "markdown",
-        "markdown": {
+        "msgtype": "text",
+        "text": {
             "content": content
         }
     }
-    res = requests.post(QYWX_ROBOT_URL, json=data)
-    print(f"✅ 企业微信推送状态: {res.json()}")
+    try:
+        res = requests.post(QYWX_ROBOT_URL, json=data)
+        try:
+            print(f"✅ 企业微信推送状态: {res.json()}")
+        except Exception:
+            print(f"⚠️ 收到服务器响应，但非 JSON 格式（状态码 {res.status_code}）: {res.text}")
+    except Exception as e:
+        print(f"❌ 发送企业微信请求失败: {e}")
 
 def check_and_notify():
     last_date_str, cycle_days, period_length, is_stressed, is_sleep_deprived = get_remote_data()
@@ -64,27 +70,27 @@ def check_and_notify():
     ovulation_start = ovulation_day - datetime.timedelta(days=5)
     luteal_start = ovulation_day + datetime.timedelta(days=1)
 
-    # 快捷打卡 Markdown 底部按钮
+    # 普通微信完美兼容的快捷打卡文本排版
     quick_action_footer = (
-        "\n\n---"
-        f"\n📲 **微信端快捷打卡（点击即刻更新云端）：**\n"
-        f"-[🩸 快捷打卡：经期今天到了]({PAGE_URL}?action=period_today)\n"
-        f"-[🎉 快捷打卡：经期今天结束]({PAGE_URL}?action=period_end)\n"
-        f"-[⚡ 快捷打卡：今日高压/加班]({PAGE_URL}?action=toggle_stress)\n"
-        f"-[🌙 快捷打卡：今日熬夜/失眠]({PAGE_URL}?action=toggle_sleep)\n"
-        f"-[🔄 快捷重置影响因子]({PAGE_URL}?action=reset_factors)\n"
-        f"-[🌐 打开动态护理站网页]({PAGE_URL})"
+        "\n-----------------------\n"
+        "📲 微信端快捷打卡（点击链接即可更新）：\n\n"
+        f"🩸 经期今天到了：\n{PAGE_URL}?action=period_today\n\n"
+        f"🎉 经期今天结束：\n{PAGE_URL}?action=period_end\n\n"
+        f"⚡ 今日高压/加班：\n{PAGE_URL}?action=toggle_stress\n\n"
+        f"🌙 今日熬夜/失眠：\n{PAGE_URL}?action=toggle_sleep\n\n"
+        f"🔄 重置影响因子：\n{PAGE_URL}?action=reset_factors\n\n"
+        f"🌐 打开动态护理站网页：\n{PAGE_URL}"
     )
 
     # 1. 排卵期前 1 天提醒
     if today == (ovulation_start - datetime.timedelta(days=1)):
         msg = (
-            f"### 🥚 排卵期预警提醒\n"
-            f"> **排卵期区间：** {ovulation_start.strftime('%m月%d日')} ~ {(ovulation_day + datetime.timedelta(days=4)).strftime('%m月%d日')}\n\n"
-            f"🙋‍♂️ **@男朋友（照顾指南）：**\n"
-            f"- 此时她处于雌激素高峰，精力充沛、情绪高涨，适合安排温馨约会或出游！\n"
-            f"- 提醒她多补充水分，做好安全避孕措施。\n\n"
-            f"🙋‍♀️ **@宝子（温馨贴士）：**\n"
+            f"🥚 排卵期预警提醒\n"
+            f"📍 排卵期区间：{ovulation_start.strftime('%m月%d日')} ~ {(ovulation_day + datetime.timedelta(days=4)).strftime('%m月%d日')}\n\n"
+            f"🙋‍♂️ 男朋友照顾指南：\n"
+            f"1. 此时她处于雌激素高峰，精力充沛、情绪高涨，适合安排温馨约会或出游！\n"
+            f"2. 提醒她多补充水分，做好安全避孕措施。\n\n"
+            f"🙋‍♀️ 宝子温馨贴士：\n"
             f"- 明天开始进入排卵期，身体代谢旺盛，保持好心情哦！"
             + quick_action_footer
         )
@@ -93,12 +99,12 @@ def check_and_notify():
     # 2. 黄体期前 1 天提醒（排卵日当天）
     elif today == ovulation_day:
         msg = (
-            f"### 🌧️ 黄体期（PMS经前综合征）预警提醒\n"
-            f"> **预计黄体期：** {luteal_start.strftime('%m月%d日')} ~ {(next_period_start - datetime.timedelta(days=1)).strftime('%m月%d日')}\n\n"
-            f"🙋‍♂️ **@男朋友（备战指南）：**\n"
-            f"- 明天起孕激素上升，容易引发 PMS（皮肤变差、情绪焦虑或易累）。\n"
-            f"- 准备一点她爱吃的低糖甜食，多听她倾诉，给足包容与安全感！\n\n"
-            f"🙋‍♀️ **@宝子（温馨贴士）：**\n"
+            f"🌧️ 黄体期（PMS经前综合征）预警提醒\n"
+            f"📍 预计黄体期：{luteal_start.strftime('%m月%d日')} ~ {(next_period_start - datetime.timedelta(days=1)).strftime('%m月%d日')}\n\n"
+            f"🙋‍♂️ 男朋友备战指南：\n"
+            f"1. 明天起孕激素上升，容易引发 PMS（皮肤变差、情绪焦虑或易累）。\n"
+            f"2. 准备一点她爱吃的低糖甜食，多听她倾诉，给足包容与安全感！\n\n"
+            f"🙋‍♀️ 宝子温馨贴士：\n"
             f"- 体内孕激素开始上升，如果觉得疲倦或情绪波动是正常的，今晚早点休息哦！"
             + quick_action_footer
         )
@@ -107,13 +113,13 @@ def check_and_notify():
     # 3. 经期前 1 天提醒
     elif today == (next_period_start - datetime.timedelta(days=1)):
         msg = (
-            f"### ⚠️ 经期倒计时 1 天（痛经预防黄金24小时）\n"
-            f"> **预计经期首日：** {next_period_start.strftime('%m月%d日')}\n\n"
-            f"🙋‍♂️ **@男朋友（行动清单）：**\n"
-            f"- 检查布洛芬/安心裤库存。若有痛经史，见红或微痛第一时间给她服药！\n"
-            f"- 准备好 40~45℃ 暖宝宝/热敷带（极速扩张血管降解前列腺素）。\n"
-            f"- 今晚将卧室空调调至 18~20℃（降低体温诱导夜间深睡眠）。\n\n"
-            f"🙋‍♀️ **@宝子（温馨贴士）：**\n"
+            f"⚠️ 经期倒计时 1 天（痛经预防黄金24小时）\n"
+            f"📍 预计经期首日：{next_period_start.strftime('%m月%d日')}\n\n"
+            f"🙋‍♂️ 男朋友行动清单：\n"
+            f"1. 检查布洛芬/安心裤库存。若有痛经史，见红或微痛第一时间给她服药！\n"
+            f"2. 准备好 40~45℃ 暖宝宝/热敷带（极速扩张血管降解前列腺素）。\n"
+            f"3. 今晚将卧室空调调至 18~20℃（降低体温诱导夜间深睡眠）。\n\n"
+            f"🙋‍♀️ 宝子温馨贴士：\n"
             f"- 经期明天即将到来，避免吃冰冷食物，今晚早点睡，所有后勤交给男朋友！"
             + quick_action_footer
         )
@@ -131,16 +137,16 @@ def check_and_notify():
             care_girl = "今天是经血高峰期，容易疲惫，随时叫男朋友递热水和换暖宝宝！"
         elif current_day == 3:
             care_boy = "痉挛开始缓解！晚餐安排富含铁与 Omega-3 的食物（菠菜/瘦肉/深海鱼）补血。"
-            care_girl = "身体在慢慢恢复啦！虽然不那么通了，但依然要避免剧烈运动和受凉哦。"
+            care_girl = "身体在慢慢恢复啦！虽然不那么痛了，但依然要避免剧烈运动和受凉哦。"
         else:
             care_boy = f"经期尾声阶段！多给她吃水果补充维C，注意腰腹防风保暖。"
             care_girl = "经期即将结束，气色在变好啦！这几天辛苦啦~"
 
         msg = (
-            f"### 🩸 经期关怀 · 第 {current_day} 天\n"
-            f"> **状态：** 经期进行中（预计持续至 {(last_date + datetime.timedelta(days=period_length-1)).strftime('%m月%d日')}）\n\n"
-            f"🙋‍♂️ **@男朋友（专属护航）：**\n- {care_boy}\n\n"
-            f"🙋‍♀️ **@宝子（专属关怀）：**\n- {care_girl}"
+            f"🩸 经期关怀 · 第 {current_day} 天\n"
+            f"📍 状态：经期进行中（预计持续至 {(last_date + datetime.timedelta(days=period_length-1)).strftime('%m月%d日')}）\n\n"
+            f"🙋‍♂️ 男朋友专属护航：\n- {care_boy}\n\n"
+            f"🙋‍♀️ 宝子专属关怀：\n- {care_girl}"
             + quick_action_footer
         )
         send_qywx_notice(msg)
