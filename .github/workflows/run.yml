@@ -2,9 +2,9 @@ name: Period Reminder Daily Check
 
 on:
   schedule:
-    # 每天北京时间早上 08:00 自动触发运行 (UTC 00:00)
-    - cron: '0 0 * * *'
-  workflow_dispatch: # 允许在 GitHub 手动点击测试
+    # ⏱️ 每天北京时间上午 10:00 自动触发（对应 UTC 02:00）
+    - cron: '0 2 * * *'
+  workflow_dispatch: # 保留手动触发测试按钮
 
 jobs:
   run-script:
