@@ -2,8 +2,8 @@ name: Period Reminder Daily Check
 
 on:
   schedule:
-    # ⏱️ 每天北京时间上午 10:00 自动触发（对应 UTC 02:00）
-    - cron: '0 2 * * *'
+    # ⏱️ 每天北京时间上午 11:00 自动触发（对应 UTC 03:00）
+    - cron: '0 3 * * *'
   workflow_dispatch: # 保留手动触发测试按钮
 
 jobs:
